@@ -1,68 +1,99 @@
 export class Calculator {
-  constructor() {
-    this.display = document.getElementById("display");
-    this.expression = "";
-    this.hasError = false;
-  }
+    constructor(displayElement) {
+        this.display = displayElement;
+        this.expression = '';
+        this.hasError = false;
+        this.buttons = [];
+    }
 
-  init() {
-    document.querySelectorAll("button").forEach((button) => {
-      button.addEventListener("click", () => {
-        this.handleButtonClick(button.textContent);
-      });
-    });
-    this.updateDisplay();
-  }
-  handleButtonClick(value) {
-    if (this.hasError && value !== "C") {
-      this.clear();
+    init() {
+        this.buttons = Array.from(document.querySelectorAll('.buttons button'));
+        this.buttons.forEach(btn => {
+            btn.addEventListener('click', (e) => this.handleButtonClick(e.target.textContent));
+        });
     }
-    if (value === "C") {
-      this.clear();
-    } else if (value === "=") {
-      this.calculate();
-    } else {
-      this.addToExpression(value);
-    }
-  }
-  addToExpression(value) {
-    if (this.isOperator(value) && this.isLastCharOperator()) {
-      this.expression = this.expression.slice(0, -1) + value;
-    } else if (value === "." && this.hasDuplicateDot()) {
-      return;
-    } else if (this.isOperator(value) && !this.expression && value !== "-") {
-      return;
-    } else {
-      this.expression += value;
-    }
-    this.updateDisplay();
-  }
 
-  calculate() {
-    if (!this.expression || this.hasError) return;
-    try {
-      const result = this.safeEvaluate(this.expression);
-      if (!isFinite(result)) {
-        throw new Error("Некорректный результат");
-      }
-      this.expression = String(result);
-      this.hasError = false;
-      this.updateDisplay();
-    } catch (error) {
-      this.showError("Ошибка");
+    handleButtonClick(value) {
+        if (this.hasError && value !== 'C') {
+            this.clear();
+        }
+
+        if (value === 'C') {
+            this.clear();
+        } else if (value === '=') {
+            this.calculate();
+        } else {
+            this.addToExpression(value);
+        }
     }
-  }
-  safeEvaluate(expr) {
-    if (!this.isValidExpression(expr)) {
-        throw new Error("Некорректное выражение");
+
+    addToExpression(value) {
+        if (this.expression === '' && this.isOperator(value) && value !== '-') return;
+        if (this.isLastCharOperator() && this.isOperator(value)) return;
+        if (value === '.' && this.hasDuplicateDot()) return;
+
+        this.expression += value;
+        this.updateDisplay();
     }
-    return eval(expr);
-   }
-    isValidExpression(expr) {
-        expr = expr.replace(/\/s+/g, "");
-        const doubleOps = /[+\-\*]{2,}/;
-        if (doubleOps.test(expr)) return false;
-        if (/[+\-*/]$/.test(expr)) return false;
-            return true;
+
+    calculate() {
+        if (!this.isValidExpression()) {
+            this.showError();
+            return;
+        }
+
+        try {
+            const result = this.safeEvaluate(this.expression);
+            if (!isFinite(result)) {
+                this.showError();
+            } else {
+                this.expression = String(result);
+                this.updateDisplay();
+                this.hasError = false;
+            }
+        } catch (error) {
+            this.showError();
+        }
+    }
+    safeEvaluate(expr) {
+        if (!/^[0-9+\-*/(). ]+$/.test(expr)) {
+            throw new Error('Invalid characters in expression');
+        }
+        return eval(expr);
+    }
+    isValidExpression() {
+        if (this.expression.trim() === '') return false;
+        const lastChar = this.expression.slice(-1);
+        if (this.isOperator(lastChar)) return false; 
+        return true;
+    }
+
+    clear() {
+        this.expression = '';
+        this.hasError = false;
+        this.updateDisplay();
+    }
+
+    updateDisplay() {
+        this.display.value = this.expression === '' ? '0' : this.expression;
+    }
+
+    showError() {
+        this.display.value = 'Ошибка';
+        this.hasError = true;
+    }
+
+    isOperator(char) {
+        return ['+', '-', '*', '/'].includes(char);
+    }
+
+    isLastCharOperator() {
+        return this.expression.length > 0 && this.isOperator(this.expression.slice(-1));
+    }
+
+    hasDuplicateDot() {
+        const parts = this.expression.split(/[+\-*/]/);
+        const currentNumber = parts[parts.length - 1];
+        return currentNumber.includes('.');
     }
 }
